@@ -1,0 +1,130 @@
+<!doctype html>
+<html class="preload">
+<head>
+  <script>
+  const DEFAULT_URL = '/pdf/VializCarlosResume.pdf';
+  window.pdfDocumentPromise = fetchDocument(DEFAULT_URL);
+  function fetchDocument(url) {
+    return new Promise(function(resolve, reject) {
+      const xhr = new XMLHttpRequest();
+      xhr.open('GET', url, true);
+      xhr.responseType = 'arraybuffer';
+      xhr.setRequestHeader('Accept', 'text/html');
+      xhr.onload = (response) => {
+        var arrayBuffer = xhr.response; // Note: not responseText
+        if (arrayBuffer) {
+          resolve(new Uint8Array(arrayBuffer));
+        } else {
+          reject();
+        }
+      };
+      xhr.onerror = reject;
+      xhr.send();
+    });
+  }
+  </script>
+  <script>
+  const CDN_WORKER_SRC = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/1.8.195/pdf.worker.min.js';
+  const url = new URL(CDN_WORKER_SRC, window.location).href;
+  const wrapper = 'importScripts(\'' + url + '\');';
+  const workerSrc = URL.createObjectURL(new Blob([wrapper]));
+  window.pdfPort = new Worker(workerSrc);
+  </script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/1.8.195/pdf.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/1.8.195/pdf_viewer.min.js"></script>
+  <script>
+  let container = null;
+  const containerReady = new Promise(resolve => {
+    document.addEventListener('DOMContentLoaded',
+        () => resolve(container = document.getElementById('viewer-container')));
+  });
+  const pdfDocumentReady = window.pdfDocumentPromise.then(
+      pdfData => PDFJS.getDocument({
+        data: pdfData,
+        worker: new PDFJS.PDFWorker(null, window.pdfPort),
+      }));
+  const loadPromise = Promise.all([containerReady, pdfDocumentReady]);
+  loadPromise
+      .then(results => loadPdf(results[0], results[1]))
+      .then(loaded);
+
+  function loadPdf(container, pdfDocument) {
+    const pdfViewer = new PDFJS.PDFViewer({container});
+    pdfViewer.setDocument(pdfDocument);
+    return pdfViewer.firstPagePromise;
+  }
+
+  function loaded() {
+    postReady();
+    document.documentElement.classList.remove('preload');
+    scaleToFit();
+    setupResizeListener(onResizeFrame);
+  }
+
+  function scaleToFit() {
+    const widthRatio = window.innerWidth / container.scrollWidth;
+    const heightRatio = window.innerHeight / container.scrollHeight
+    container.style.transform = `scale(${widthRatio})`;
+    postResize(container.offsetHeight * widthRatio || window.innerHeight);
+  }
+
+  function postReady() {
+    window.parent.postMessage({
+      sentinel: 'amp',
+      type: 'embed-ready'
+    }, '*');
+  }
+
+  function postResize(height) {
+    console.log(height);
+    window.parent.postMessage({
+      sentinel: 'amp',
+      type: 'embed-size',
+      height: height,
+      // don't set width, it makes it fixed
+    }, '*');
+  }
+
+  function setupResizeListener(cb) {
+    let lastWidth;
+    let blocked = false;
+    window.addEventListener('resize', e => {
+      if (blocked) { return; }
+      if (lastWidth == null) {
+        lastWidth = window.innerWidth;
+      }
+      if (window.innerWidth !== lastWidth) {
+        requestAnimationFrame(() => {
+            cb();
+            blocked = false;
+        });
+        blocked = true;
+      }
+      lastWidth = window.innerWidth;
+    });
+  }
+
+  function onResizeFrame() {
+    scaleToFit();
+  }
+  </script>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/1.8.199/pdf_viewer.css">
+  <style>
+  html, body { margin: 0; padding: 0; }
+  body {
+    position: relative;
+  }
+  .preload {
+    background: #ddd;
+  }
+  #viewer-container {
+    transform-origin: top left;
+  }
+  </style>
+</head>
+<body>
+<div id="viewer-container">
+  <div id="viewer" class="pdfViewer"></div>
+</div>
+</body>
+</html>

@@ -1,0 +1,257 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <link rel="shortcut icon" href="https://www.gravatar.com/avatar/400d6e7be8cee150748ceb9f9007c304?s=32">
+  <meta name="viewport" content="width=device-width,minimum-scale=1,initial-scale=1">
+  <script async src="https://cdn.ampproject.org/shadow-v0.js"></script>
+  <script>
+  const DEFAULT_PAGE = 'about';
+  const ROOT_URL = '//www.vializ.me/amp';
+  let currentAmpDoc = null;
+  let navLinks = null;
+  let main = null;
+
+  const ampPromise = Promise.all([
+    new Promise(resolve => {
+      (window.AMP = window.AMP || []).push(resolve);
+    }),
+    new Promise(resolve => {
+      document.addEventListener('DOMContentLoaded', resolve);
+    })
+  ]);
+
+  ampPromise.then(initialize);
+
+  function initialize() {
+    navLinks = document.getElementsByClassName('nav-link');
+    main = document.getElementById('main');
+    document.addEventListener('click', e => {
+      if (e.target.matches('a[href^="/"]') && !e.altKey && !e.ctrlKey &&
+          !e.metaKey && !e.shiftKey) {
+          e.preventDefault();
+          const href = e.target.href;
+          navigate(href);
+      }
+    });
+
+    navigate(window.location.href, false);
+  }
+
+  function navigate(href, saveState) {
+    if (typeof saveState === 'undefined') { saveState = true; }
+
+    const slashIndex = href.lastIndexOf('/');
+    if (slashIndex !== -1) {
+      const page = href.slice(slashIndex + 1);
+      if (saveState) {
+        history.pushState({page}, null, href);
+      } else {
+        history.replaceState({page}, null, href);
+      }
+      openPage(page);
+    } else {
+      openPage();
+    }
+  }
+
+  window.addEventListener('popstate', e => {
+    const page = (e.state && e.state.page);
+    openPage(page);
+  });
+
+  function openPage(page) {
+    page = page || DEFAULT_PAGE;
+    const url = `${ROOT_URL}/${page}.amp.html`;
+    fetchDocument(url).then(doc => {
+      const containerElements = document.getElementsByClassName('container');
+      for (let i = 0; i < containerElements.length; i++) {
+        containerElements[i].classList.remove('container-visible');
+      }
+
+      let container = document.getElementById(`container-${page}`);
+      if (!container) {
+        container = createContainer(page);
+        main.appendChild(container);
+        currentAmpDoc = AMP.attachShadowDoc(container, doc, url, {mode: 'open'});
+      }
+
+      container.classList.add('container-visible');
+    });
+
+    for (let i = 0; i < navLinks.length; i++) {
+      const link = navLinks[i]
+      link.classList.toggle('nav-link-active', link.href.match(page));
+    }
+  }
+
+  function createContainer(page) {
+    const container = document.createElement('div');
+    container.classList.add('container');
+    container.id = `container-${page}`;
+    return container;
+  }
+
+  function fetchDocument(url) {
+    return new Promise((resolve, reject) => {
+      const xhr = new XMLHttpRequest();
+      xhr.open('GET', url, true);
+      xhr.responseType = 'document';
+      xhr.setRequestHeader('Accept', 'text/html');
+      xhr.onload = () => {
+        resolve(xhr.responseXML);
+      };
+      xhr.send();
+    });
+  }
+  </script>
+  <style>
+  body {
+    margin: 0;
+    padding: 0;
+    color: #333;
+    font-family: Georgia, serif;
+  }
+
+  h1, h2, h3, h4 {
+    font-weight: normal;
+  }
+
+  h1 {
+    font-size: 2em;
+    color: #444;
+  }
+
+  h2 {
+    color: #333;
+    font-size: 1.25em;
+    font-style: italic;
+  }
+
+  h3 {
+    font-size: 1.15em;
+    color: #666;
+  }
+
+  main {
+    max-width: 800px;
+    margin: auto;
+    padding: 0 10px;
+  }
+
+  p {
+    line-height: 1.5em;
+  }
+
+  a, :link, :visited {
+    color: #29506D;
+    text-decoration: underline;
+  }
+
+  a:hover {
+    color: #496D89;
+    text-decoration: none;
+  }
+
+  header {
+    display: flex;
+    padding: 10px 15px;
+    background-color: #f3f3f3;
+  }
+
+  header ul, header li {
+    display: inline;
+    list-style: none;
+    margin: 0;
+    padding: 0;
+  }
+
+  .nav-link-active {
+    color: #123652;
+    text-decoration: none;
+  }
+
+  .title {
+    font-size: 1.15em;
+  }
+
+  .container {
+    display: none;
+  }
+
+  .container-visible {
+    display: block;
+  }
+
+  .header-section {
+    display: flex;
+    align-items: center;
+    flex-flow: column nowrap;
+  }
+
+  .header-section-home {
+    margin-right: 10px;
+    margin-left: auto;
+  }
+
+  .header-section-title {
+    margin-left: -26px;
+    flex: 1;
+  }
+
+  .home-image {
+    border-radius: 50%;
+  }
+
+  nav {
+    margin-top: 4px;
+  }
+
+  @media (min-width: 640px) {
+    .header-section {
+      justify-content: space-between;
+      flex-flow: row wrap;
+    }
+    .header-section-title {
+      position: static;
+      margin-left: auto;
+    }
+    nav {
+      margin-top: 0;
+    }
+    ul + ul {
+      margin-left: 10px;
+    }
+  }
+  </style>
+</head>
+<body>
+  <header>
+    <div class="header-section header-section-home">
+      <a href="/" title="Home">
+      <img
+        class="home-image"
+        src="https://www.gravatar.com/avatar/400d6e7be8cee150748ceb9f9007c304?s=42"
+        srcset="https://www.gravatar.com/avatar/400d6e7be8cee150748ceb9f9007c304?s=42 1x,
+                https://www.gravatar.com/avatar/400d6e7be8cee150748ceb9f9007c304?s=84 2x"
+        width="42"
+        height="42"
+      /></a>
+    </div>
+    <div class="header-section header-section-title">
+      <span class="title">Carlos Alexander Vializ</span>
+      <nav>
+          <ul>
+          <li><a class="nav-link" href="/about">About</a></li>
+          <li><a class="nav-link" href="/projects">Portfolio</a></li>
+          <li><a class="nav-link" href="/resume">Resume</a></li>
+        </ul>
+        <ul>
+          <li><a href="https://www.github.com/cvializ/">GitHub</a></li>
+        </ul>
+      </nav>
+    </div>
+  </header>
+  <div id="main"></div>
+</body>
+</html>
